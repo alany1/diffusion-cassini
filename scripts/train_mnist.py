@@ -34,7 +34,7 @@ def parse_args():
 
 def main(args):
     device="cpu" if args.cpu else "cuda"
-    train_dataloader,test_dataloader=create_dataloaders(dataset_path="/home/exx/datasets/diffusion-cassini/mnist/v0", batch_size=args.batch_size,image_size=28)
+    train_dataloader,test_dataloader=create_dataloaders(dataset_path="/home/exx/datasets/diffusion-cassini/mnist/v2", clean_L=0, batch_size=args.batch_size, test_batch_size=args.n_samples, image_size=28)
     model = MNISTDiffusion(timesteps=args.timesteps, image_size=28, in_channels=1, base_dim=args.model_base_dim, dim_mults=[2, 4]).to(
         device
     )
@@ -55,14 +55,30 @@ def main(args):
         ckpt=torch.load(args.ckpt)
         model_ema.load_state_dict(ckpt["model_ema"])
         model.load_state_dict(ckpt["model"])
+        
+    test_images, test_Ls = next(iter(test_dataloader))
+    test_images = test_images.to(device)
+    test_Ls = test_Ls.to(device)
+
+    test_mask = test_Ls > 0
+    test_noise_level_min = torch.zeros_like(test_Ls)
+    test_noise_level_min[test_mask] = (model.timesteps / test_Ls[test_mask]).long()
 
     global_steps=0
     for i in range(args.epochs):
         model.train()
-        for j,(image,target) in enumerate(train_dataloader):
+        for j,(image,Ls) in enumerate(train_dataloader):
             noise=torch.randn_like(image).to(device)
             image=image.to(device)
-            pred=model(image,noise)
+            Ls = Ls.to(device)
+            
+            # higher L -> less noised. 
+            # this says that we only sample more noise level than the image contains
+            mask = Ls > 0
+            noise_level_min = torch.zeros_like(Ls)
+            noise_level_min[mask] = (model.timesteps / Ls[mask]).long()
+            
+            pred=model(image,noise, noise_level_min=noise_level_min)
             loss=loss_fn(pred,noise)
             loss.backward()
             optimizer.step()
@@ -78,11 +94,20 @@ def main(args):
                 "model_ema":model_ema.state_dict()}
 
         os.makedirs("results",exist_ok=True)
-        torch.save(ckpt,"results/steps_{:0>8}.pt".format(global_steps))
+        # torch.save(ckpt,"results/steps_{:0>8}.pt".format(global_steps))
 
         model_ema.eval()
-        samples=model_ema.module.sampling(args.n_samples,clipped_reverse_diffusion=not args.no_clip,device=device)
+        # image, Ls = next(iter(test_dataloader))
+        # image=image.to(device)
+        # Ls = Ls.to(device)
+        # # higher L -> less noised. 
+        # # this says that we only sample more noise level than the image contains
+        # mask = Ls > 0
+        # noise_level_min = torch.zeros_like(Ls)
+        # noise_level_min[mask] = (model.timesteps / Ls[mask]).long()
+        samples = model_ema.module.sampling_starting_from_noise_level(test_images, noise_level_min=test_noise_level_min, clipped_reverse_diffusion=not args.no_clip, device=device)
         save_image(samples,"results/steps_{:0>8}.png".format(global_steps),nrow=int(math.sqrt(args.n_samples)))
+            
 
 if __name__=="__main__":
     args=parse_args()

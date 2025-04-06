@@ -12,7 +12,7 @@ class DataArgs(ParamsProto):
     Create MNIST-like synthetic data, following the noise model.
     """
     data_root = Proto(env="DATASETS")
-    data_prefix = "mnist/v0"
+    data_prefix = "mnist/v2"
 
     L_min = 1
     L_max = 64
@@ -22,8 +22,10 @@ class DataArgs(ParamsProto):
 
     bg_color_min = 0.1
     bg_color_max = 0.3
+    
+    p_clean = 0.1 # probably to use the clean version
 
-    samples_per_digit = 25
+    samples_per_digit = 10_000
 
     image_size = (28, 28)
     font_path = "DejaVuSans-Bold.ttf"
@@ -84,14 +86,24 @@ def entrypoint(**deps):
         os.makedirs(f"{DataArgs.data_root}/{DataArgs.data_prefix}/{digit}", exist_ok=True)
 
         for L, bg_color in zip(Ls, bg_colors):
-            noised_image = create_noised_digit(
-                digit,
-                L=L,
-                bg_color=bg_color,
-                image_size=DataArgs.image_size,
-                font_path=DataArgs.font_path,
-                font_size=DataArgs.font_size
-            )
+            if random.random() < DataArgs.p_clean:
+                L = None
+                noised_image = create_ground_truth_digit(
+                    digit,
+                    image_size=DataArgs.image_size,
+                    font_path=DataArgs.font_path,
+                    font_size=DataArgs.font_size,
+                    bg_color=bg_color
+                )
+            else:
+                noised_image = create_noised_digit(
+                    digit,
+                    L=L,
+                    bg_color=bg_color,
+                    image_size=DataArgs.image_size,
+                    font_path=DataArgs.font_path,
+                    font_size=DataArgs.font_size
+                )
 
             img_filename = f"{DataArgs.data_root}/{DataArgs.data_prefix}/{digit}/digit_{digit}_L_{L}_bg_{bg_color:.2f}.png"
             Image.fromarray(noised_image).save(img_filename)

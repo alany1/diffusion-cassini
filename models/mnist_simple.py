@@ -26,14 +26,27 @@ class MNISTDiffusion(nn.Module):
 
         self.model=Unet(timesteps,time_embedding_dim,in_channels,in_channels,base_dim,dim_mults)
 
-    def forward(self,x,noise):
-        # x:NCHW
-        t=torch.randint(0,self.timesteps,(x.shape[0],)).to(x.device)
-        x_t=self._forward_diffusion(x,t,noise)
-        pred_noise=self.model(x_t,t)
+    def forward(self, x, noise, noise_level_min=None):
+        # x: NCHW
+        if noise_level_min is None:
+            # Sample uniformly from [0, self.timesteps)
+            t = torch.randint(0, self.timesteps, (x.shape[0],), device=x.device)
+        else:
+            # noise_level_min is assumed to be a tensor of shape (B, 1).
+            # For each sample, we want to sample an integer in
+            # [noise_level_min[i], self.timesteps). We can do this by:
+            # 1. Generate a uniform random number u in [0,1) for each sample.
+            # 2. Multiply by the range length: (self.timesteps - noise_level_min[i])
+            # 3. Floor the result to get an integer offset, then add noise_level_min.
+            u = torch.rand(x.shape[0], device=x.device)
+            range_length = (self.timesteps - noise_level_min).to(x.device)  # tensor of shape (B,)
+            t = (noise_level_min + torch.floor(u * range_length)).long()
+            t = t.clamp(max=self.timesteps - 1)
+
+        x_t = self._forward_diffusion(x, t, noise)
+        pred_noise = self.model(x_t, t)
 
         return pred_noise
-
     @torch.no_grad()
     def sampling(self,n_samples,clipped_reverse_diffusion=True,device="cuda"):
         x_t=torch.randn((n_samples,self.in_channels,self.image_size,self.image_size)).to(device)
@@ -49,7 +62,55 @@ class MNISTDiffusion(nn.Module):
         x_t=(x_t+1.)/2. #[-1,1] to [0,1]
 
         return x_t
-    
+
+    @torch.no_grad()
+    def sampling_starting_from_noise_level(self, start_samples, noise_level_min, clipped_reverse_diffusion=True, device="cuda"):
+        """
+        start_samples: tensor of shape (B, C, H, W) assumed to be at timestep noise_level_min.
+        noise_level_min: either a single integer (or 0-dim tensor) or a tensor of shape (B, 1)
+
+        Returns the denoised images after reversing the diffusion process from noise_level_min down to 0.
+        """
+        x = start_samples.to(device)
+        B = x.shape[0]
+
+        # Case 1: noise_level_min is a single integer (or scalar tensor)
+        if isinstance(noise_level_min, int) or (torch.is_tensor(noise_level_min) and noise_level_min.dim() == 0):
+            t_start = int(noise_level_min)
+            # Reverse diffusion from t_start-1 down to 0 (for all samples simultaneously)
+            for i in tqdm(range(t_start - 1, -1, -1), desc="Sampling (uniform noise_level_min)"):
+                t = torch.full((B,), i, device=device)
+                noise = torch.randn_like(x)
+                if clipped_reverse_diffusion:
+                    x = self._reverse_diffusion_with_clip(x, t, noise)
+                else:
+                    x = self._reverse_diffusion(x, t, noise)
+        else:
+            # Case 2: noise_level_min is a tensor of shape (B,1)
+            # For each sample, run its reverse process individually.
+            for b in tqdm(range(B), desc="Sampling (per-sample noise_level_min)"):
+                t_start = int(noise_level_min[b].item())
+                for i in range(t_start - 1, -1, -1):
+                    t_val = torch.tensor([i], device=device)
+                    noise = torch.randn_like(x[b : b + 1])
+                    if clipped_reverse_diffusion:
+                        x[b : b + 1] = self._reverse_diffusion_with_clip(x[b : b + 1], t_val, noise)
+                    else:
+                        x[b : b + 1] = self._reverse_diffusion(x[b : b + 1], t_val, noise)
+
+        # Map from [-1,1] to [0,1]
+        x = self.invert_preprocess(x)
+        return x
+
+    def invert_preprocess(self, x, mean=0.3863, std=0.1982):
+        # Denormalize
+        x = x * std + mean
+        # Invert log1p: log1p(x) = log(1+x)  so  x = expm1(log1p(x))
+        x = torch.expm1(x)
+        # Ensure values are in [0,1]
+        x = torch.clamp(x, 0, 1)
+        return x
+        
     def _cosine_variance_schedule(self,timesteps,epsilon= 0.008):
         steps=torch.linspace(0,timesteps,steps=timesteps+1,dtype=torch.float32)
         f_t=torch.cos(((steps/timesteps+epsilon)/(1.0+epsilon))*math.pi*0.5)**2
@@ -89,7 +150,7 @@ class MNISTDiffusion(nn.Module):
 
 
     @torch.no_grad()
-    def _reverse_diffusion_with_clip(self,x_t,t,noise): 
+    def _reverse_diffusion_with_clip(self,x_t,t,noise, clip_bounds=(-1.95, 1.55)): 
         '''
         p(x_{0}|x_{t}),q(x_{t-1}|x_{0},x_{t})->mean,std
 
@@ -101,7 +162,7 @@ class MNISTDiffusion(nn.Module):
         beta_t=self.betas.gather(-1,t).reshape(x_t.shape[0],1,1,1)
         
         x_0_pred=torch.sqrt(1. / alpha_t_cumprod)*x_t-torch.sqrt(1. / alpha_t_cumprod - 1.)*pred
-        x_0_pred.clamp_(-1., 1.)
+        x_0_pred.clamp_(*clip_bounds)
 
         if t.min()>0:
             alpha_t_cumprod_prev=self.alphas_cumprod.gather(-1,t-1).reshape(x_t.shape[0],1,1,1)

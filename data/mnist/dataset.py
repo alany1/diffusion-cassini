@@ -6,10 +6,17 @@ from torchvision.datasets import MNIST
 import torch
 
 class SyntheticMNISTDataset(Dataset):
-    def __init__(self, root, transform=None):
+    def __init__(self, root, clean_L: int, transform=None):
+        """
+        
+        :param root: 
+        :param clean_L: value to use for L if the image is clean (technically infty) 
+        :param transform: 
+        """
         self.root = root
         self.transform = transform
         self.samples = []
+        self.clean_L = clean_L
 
         # Recursively traverse the directory tree and collect image paths with their L value.
         for dirpath, _, filenames in os.walk(root):
@@ -20,7 +27,10 @@ class SyntheticMNISTDataset(Dataset):
                     parts = fname.split("_")
                     try:
                         # parts[3] should correspond to the L value
-                        L = int(parts[3])
+                        if parts[3] == "None":
+                            L = clean_L
+                        else:
+                            L = int(parts[3])
                     except Exception as e:
                         print(f"Error parsing L from filename: {fname}, error: {e}")
                         continue
@@ -38,7 +48,7 @@ class SyntheticMNISTDataset(Dataset):
         return image, L
 
 
-def create_dataloaders(batch_size, dataset_path, image_size=28, num_workers=4):
+def create_dataloaders(*, batch_size, test_batch_size, dataset_path, clean_L, image_size=28, num_workers=4):
     preprocess = transforms.Compose(
         [
             transforms.Resize((image_size, image_size)),
@@ -49,7 +59,7 @@ def create_dataloaders(batch_size, dataset_path, image_size=28, num_workers=4):
     )
 
     # Set the root folder based on your dataset structure:
-    full_dataset = SyntheticMNISTDataset(root=dataset_path, transform=preprocess)
+    full_dataset = SyntheticMNISTDataset(root=dataset_path, clean_L=clean_L, transform=preprocess)
 
     # Split the dataset into train (80%) and validation (20%)
     total_samples = len(full_dataset)
@@ -58,7 +68,7 @@ def create_dataloaders(batch_size, dataset_path, image_size=28, num_workers=4):
     train_dataset, val_dataset = random_split(full_dataset, [train_samples, val_samples])
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=test_batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, val_loader
 
