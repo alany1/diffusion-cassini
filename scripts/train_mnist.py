@@ -41,7 +41,7 @@ def main(args):
     )
     
     L_max = 64
-    eval_every = 25
+    eval_every = 1
     #torchvision ema setting
     #https://github.com/pytorch/vision/blob/main/references/classification/train.py#L317
     adjust = 1* args.batch_size * args.model_ema_steps / args.epochs
@@ -107,8 +107,13 @@ def main(args):
         # noise_level_min[mask] = (model.timesteps / Ls[mask]).long()
         # samples = model_ema.module.sampling_starting_from_noise_level(test_images, noise_level_min=test_noise_level_min, clipped_reverse_diffusion=not args.no_clip, device=device)
         
-        if (i) % eval_every == 0:
-            samples = model_ema.module.sampling_Ls(test_images, Ls=test_Ls, clipped_reverse_diffusion=not args.no_clip, device=device)
+        if (i+1) % eval_every == 0:
+            samples = model_ema.module.sampling_Ls(
+                test_images.clone(), 
+                Ls=test_Ls,
+                clipped_reverse_diffusion=not args.no_clip,
+                device=device,
+            )
             save_image(samples,"results/steps_{:0>8}.png".format(global_steps),nrow=int(math.sqrt(args.n_samples)))
                 
 

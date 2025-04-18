@@ -152,7 +152,8 @@ class MNISTDiffusion(nn.Module):
         noise_levels = L_to_noise_level[Ls]
         for b in tqdm(range(B), desc="Sampling (per-sample noise_level_min)"):
             t_start = int(noise_levels[b].item())
-            for i in range(t_start - 1, -1, -1):
+            path = range(t_start - 1, -1, -1)
+            for i in path:
                 t_val = torch.tensor([i], device=device)
                 noise = torch.randn_like(x[b : b + 1])
                 x[b : b + 1] = self._reverse_step_local_eps(x[b : b + 1], t_val, noise)
