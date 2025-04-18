@@ -12,10 +12,10 @@ class DataArgs(ParamsProto):
     Create MNIST-like synthetic data, following the noise model.
     """
     data_root = Proto(env="DATASETS")
-    data_prefix = "mnist/debug"
+    data_prefix = "mnist/test/v2"
 
     L_min = 1
-    L_max = 64
+    L_max = 10
 
     digit_min = 0
     digit_max = 9
@@ -25,7 +25,7 @@ class DataArgs(ParamsProto):
     
     p_clean = 0.0 # probably to use the clean version
 
-    samples_per_digit = 1_  000
+    samples_per_digit = 1_00
 
     image_size = (28, 28)
     font_path = "DejaVuSans-Bold.ttf"

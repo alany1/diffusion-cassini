@@ -128,7 +128,7 @@ class MNISTDiffusion(nn.Module):
     
 
     @torch.no_grad()
-    def sampling_Ls(self, start_samples, Ls, clipped_reverse_diffusion=True, device="cuda"):
+    def sampling_Ls(self, start_samples, Ls, clipped_reverse_diffusion=True, device="cuda", silent=True):
         """
         start_samples: tensor of shape (B, C, H, W) assumed to be at timestep noise_level_min.
         noise_level_min: either a single integer (or 0-dim tensor) or a tensor of shape (B, 1)
@@ -150,7 +150,9 @@ class MNISTDiffusion(nn.Module):
         B = x.shape[0]
         
         noise_levels = L_to_noise_level[Ls]
-        for b in tqdm(range(B), desc="Sampling (per-sample noise_level_min)"):
+        
+        it = tqdm(range(B), desc="Sampling (per-sample noise_level_min)", disable=silent)
+        for b in it:
             t_start = int(noise_levels[b].item())
             path = range(t_start - 1, -1, -1)
             for i in path:

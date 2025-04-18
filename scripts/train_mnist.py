@@ -41,7 +41,7 @@ def main(args):
     )
     
     L_max = 64
-    eval_every = 1
+    eval_every = 25
     #torchvision ema setting
     #https://github.com/pytorch/vision/blob/main/references/classification/train.py#L317
     adjust = 1* args.batch_size * args.model_ema_steps / args.epochs
@@ -93,7 +93,7 @@ def main(args):
         ckpt={"model":model.state_dict(),
                 "model_ema":model_ema.state_dict()}
 
-        os.makedirs("results",exist_ok=True)
+        os.makedirs("results_baseline",exist_ok=True)
         # torch.save(ckpt,"results/steps_{:0>8}.pt".format(global_steps))
 
         model_ema.eval()
@@ -114,7 +114,8 @@ def main(args):
                 clipped_reverse_diffusion=not args.no_clip,
                 device=device,
             )
-            save_image(samples,"results/steps_{:0>8}.png".format(global_steps),nrow=int(math.sqrt(args.n_samples)))
+            save_image(samples,"results_baseline/steps_{:0>8}.png".format(global_steps),nrow=int(math.sqrt(args.n_samples)))
+        torch.save(ckpt,"results_baseline/steps_{:0>8}.pt".format(global_steps))
                 
 
 if __name__=="__main__":

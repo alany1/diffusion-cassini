@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.ndimage import uniform_filter
 
-def box_filter_geometric(img, kernel_size=7, pad_mode='reflect'):
+def box_filter_geometric(img, kernel_size=7, pad_mode='reflect', **_):
     pad = kernel_size // 2
     pad_width = ((pad, pad), (pad, pad))
     img_padded = np.pad(img, pad_width, mode=pad_mode)

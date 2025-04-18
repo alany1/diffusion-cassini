@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import uniform_filter
 
 
-def lee_filter(img, kernel_size=7, sigma_noise=0.1):
+def lee_filter(img, kernel_size=7, sigma_noise=0.1, **_,):
     """
     Works by computing local statistics (mean and variance) and determines how much of original image to keep
     vs. an averaged version
