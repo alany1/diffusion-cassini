@@ -25,7 +25,7 @@ class DataArgs(ParamsProto):
     
     p_clean = 0.0 # probably to use the clean version
 
-    samples_per_digit = 1_000
+    samples_per_digit = 1_  000
 
     image_size = (28, 28)
     font_path = "DejaVuSans-Bold.ttf"
