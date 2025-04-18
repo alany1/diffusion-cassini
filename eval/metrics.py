@@ -28,6 +28,39 @@ def compute_psnr(img1: np.ndarray, img2: np.ndarray, max_pixel_value: float = 25
     psnr_value = 10 * np.log10((max_pixel_value ** 2) / mse)
     return psnr_value
 
+def compute_snr(img1: np.ndarray, img2: np.ndarray) -> float:
+    """
+    Compute the SNR between two images. Uses actual signal power,
+    defined as sum of squared pixel values rather that just the peak 
+    pixel like in PSNR.
+
+    Assumes img1 is noisy image and img2 is noise-free image.
+
+    :param img1: First image in [H, W] or [H, W, C] format.
+    :param img2: Second image in [H, W] or [H, W, C] format.
+    :return: PSNR value in decibels (dB).
+    """
+    # Ensure the images have the same shape
+    if img1.shape != img2.shape:
+        raise ValueError("Input images must have the same dimensions.")
+
+    # Convert to float for precision in MSE calculation
+    img1_float = img1.astype(np.float64)
+    img2_float = img2.astype(np.float64)
+
+    noise = img1_float - img2_float
+    signal_power = np.sum(img2_float**2)
+    noise_power = np.sum(noise**2)
+
+    snr_linear = signal_power / (noise_power + 1e-12)
+    snr_db = 10 * np.log10(snr_linear)
+
+    return snr_db
+
+    
+
+
+
 
 def compute_ssim(img1: np.ndarray, img2: np.ndarray) -> float:
     """

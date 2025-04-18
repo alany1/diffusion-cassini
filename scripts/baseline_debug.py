@@ -27,6 +27,23 @@ def lee_filter(img, kernel_size=7, sigma_noise=0.1):
 
     return filtered_img
 
+def box_filter(img, kernel_size=7):
+    return uniform_filter(img, size=kernel_size)
+
+def box_filter_geometric(img, kernel_size=7):
+    log_img = np.log(img + 1e-12)
+    log_mean = uniform_filter(log_img, size=kernel_size)
+    return np.exp(log_mean)
+
+def box_filter_geometric_padded(img, kernel_size=7, pad_mode='reflect'):
+    pad = kernel_size // 2
+    pad_width = ((pad, pad), (pad, pad))
+    img_padded = np.pad(img, pad_width, mode=pad_mode)
+
+    log_img = np.log(img_padded + 1e-12)
+    log_mean = uniform_filter(log_img, size=kernel_size, mode='constant')
+    log_mean = log_mean[pad:-pad, pad:-pad]
+    return np.exp(log_mean)
 
 if __name__=="__main__":
     # -------------
@@ -53,7 +70,9 @@ if __name__=="__main__":
         sigma_noise = variance(img_np)
         print("variance (calc):", sigma_noise)
 
-        filtered_img = lee_filter(img_np, kernel_size=5, sigma_noise=sigma_noise)
+        # filtered_img = lee_filter(img_np, kernel_size=3, sigma_noise=sigma_noise)
+        # filtered_img = box_filter(img_np, kernel_size=3)
+        filtered_img = box_filter_geometric_padded(img_np, kernel_size=3)
 
         diff_img = img_np - filtered_img
 

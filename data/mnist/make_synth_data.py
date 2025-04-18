@@ -23,7 +23,7 @@ class DataArgs(ParamsProto):
     bg_color_min = 0.1
     bg_color_max = 0.3
     
-    p_clean = 0.1 # probably to use the clean version
+    p_clean = 0.0 # probably to use the clean version
 
     samples_per_digit = 1_000
 
@@ -84,7 +84,7 @@ def entrypoint(**deps):
         bg_colors = np.random.uniform(DataArgs.bg_color_min, DataArgs.bg_color_max, size=DataArgs.samples_per_digit)
 
         os.makedirs(f"{DataArgs.data_root}/{DataArgs.data_prefix}/{digit}", exist_ok=True)
-
+        
         for L, bg_color in zip(Ls, bg_colors):
             if random.random() < DataArgs.p_clean:
                 L = None
