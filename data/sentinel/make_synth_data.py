@@ -5,7 +5,7 @@ from tqdm import trange
 import os
 import random
 from matplotlib import pyplot as plt
-
+import pickle
 
 class DataArgs(ParamsProto):
     """
@@ -15,16 +15,16 @@ class DataArgs(ParamsProto):
     original_data_prefix = "sentinel/original"
 
     data_root = Proto(env="DATASETS")
-    data_prefix = "sentinel/noised/v0"
+    data_prefix = "sentinel/noised/v2"
 
-    samples_per_class = 1000
+    samples_per_class = 2500
     cropped_size = 112
 
-    L_min = 1
-    L_max = 10
+    L_min = 1   
+    L_max = 64
 
     
-    p_clean = 0.05 # probably to use the clean version
+    p_clean = 0.02 # probably to use the clean version
 
 
 
@@ -64,6 +64,7 @@ def entrypoint(**deps):
 
     id = 0 # assign each outputted image an id so don't have duplicate filenames
 
+    gt = dict()
     for terrain_type in ["agri", "barrenland", "grassland", "urban"]:
         # iterate thorugh each image in the folder
         directory_fp = f"{DataArgs.original_data_root}/{DataArgs.original_data_prefix}/{terrain_type}/s2"
@@ -87,7 +88,8 @@ def entrypoint(**deps):
         print("len(all_files)", len(all_files) )
 
         Ls = np.random.randint(DataArgs.L_min, DataArgs.L_max + 1, size=DataArgs.samples_per_class)
-
+        
+        
         os.makedirs(f"{DataArgs.data_root}/{DataArgs.data_prefix}/{terrain_type}/", exist_ok=True)
         for L, file in zip(Ls, all_files):
             
@@ -111,7 +113,10 @@ def entrypoint(**deps):
                 all_image_paths.add(img_filename)
                 id += 1
             
+            gt[img_filename] = file
             
+    with open(f"{DataArgs.data_root}/{DataArgs.data_prefix}/gt.pkl", "wb") as f:
+        pickle.dump(gt, f)
 
 
 

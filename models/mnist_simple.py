@@ -4,6 +4,7 @@ import torch.nn as nn
 from tqdm import tqdm
 
 from utils import Unet
+from utils.bucket_schedule import make_betas
 
 
 class MNISTDiffusion(nn.Module):
@@ -12,8 +13,8 @@ class MNISTDiffusion(nn.Module):
         self.timesteps=timesteps
         self.in_channels=in_channels
         self.image_size=image_size
-
         betas=self._cosine_variance_schedule(timesteps)
+        # betas = make_betas()
 
         alphas=1.-betas
         alphas_cumprod=torch.cumprod(alphas,dim=-1)

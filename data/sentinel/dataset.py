@@ -45,7 +45,7 @@ class SyntheticSentinelDataset(Dataset):
         image = Image.open(path).convert("L")
         if self.transform is not None:
             image = self.transform(image)
-        return image, L
+        return image, L, path
 
 
 def create_dataloaders(*, batch_size, test_batch_size, dataset_path, clean_L, image_size=112, num_workers=4):
@@ -77,9 +77,14 @@ def create_eval_dataloader(*, test_batch_size, dataset_path, clean_L, image_size
 
 # Example usage:
 if __name__ == "__main__":
-    dataset = f"{os.environ['DATASETS']}/sentinel/noised/v0"
+    dataset = f"{os.environ['DATASETS']}/sentinel/noised/v1/agri"
     train_loader, val_loader = create_dataloaders(batch_size=32, test_batch_size=32, clean_L=100, dataset_path=dataset)
-
+    x = next(iter(train_loader))
+    
+    x[0]
+    x[0].shape
+    x[1]
+    
     print("Done")
 
     # debug
