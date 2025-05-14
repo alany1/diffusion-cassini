@@ -8,13 +8,15 @@ from utils.bucket_schedule import make_betas
 
 
 class MNISTDiffusion(nn.Module):
-    def __init__(self,image_size,in_channels,time_embedding_dim=256,timesteps=1000,base_dim=32,dim_mults= [1, 2, 4, 8]):
+    def __init__(self,image_size,in_channels,time_embedding_dim=256,timesteps=1000,base_dim=32,dim_mults= [1, 2, 4, 8], adjust_gamma=False):
         super().__init__()
         self.timesteps=timesteps
         self.in_channels=in_channels
         self.image_size=image_size
-        betas=self._cosine_variance_schedule(timesteps)
-        # betas = make_betas()
+        if adjust_gamma:
+            betas = make_betas()
+        else:
+            betas=self._cosine_variance_schedule(timesteps)
 
         alphas=1.-betas
         alphas_cumprod=torch.cumprod(alphas,dim=-1)

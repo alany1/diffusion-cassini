@@ -10,8 +10,9 @@ from eval.metrics import compute_psnr, compute_snr, compute_ssim, contrast_delta
 from scipy.ndimage.measurements import variance
 
 class EvalArgs(PrefixProto):
-    func = "models.lee_filter:lee_filter"
+    # func = "models.lee_filter:lee_filter"
     # func = "models.box_filter_geometric:box_filter_geometric"
+    func = "models.sentinel_eval:eval_func"
     
     dataset_root = Proto(env="$DATASETS")
     dataset_prefix = "mnist/test/v0"
@@ -98,7 +99,8 @@ def main(**deps):
 if __name__ == '__main__':
     main(dataset_prefix="mnist/test/v2",
          # func="models.lee_filter:lee_filter",)
-        func = "models.box_filter_geometric:box_filter_geometric",)
+        # func = "models.box_filter_geometric:box_filter_geometric",)
+        func="models.baseline_eval:eval_func",)
 
          # func="models.baseline_eval:eval_func",)
     

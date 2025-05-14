@@ -1,4 +1,4 @@
-from params_proto import ParamsProto, Proto
+from params_proto import PrefixProto, Proto
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from tqdm import trange
@@ -7,7 +7,7 @@ import random
 from matplotlib import pyplot as plt
 import pickle
 
-class DataArgs(ParamsProto):
+class DataArgs(PrefixProto):
     """
     Create MNIST-like synthetic data, following the noise model.
     """
@@ -15,14 +15,13 @@ class DataArgs(ParamsProto):
     original_data_prefix = "sentinel/original"
 
     data_root = Proto(env="DATASETS")
-    data_prefix = "sentinel/noised/v2"
+    data_prefix = "sentinel/test/v2"
 
-    samples_per_class = 2500
+    samples_per_class = 1_00
     cropped_size = 112
 
-    L_min = 1   
-    L_max = 64
-
+    L_min = 5   
+    L_max = 15
     
     p_clean = 0.02 # probably to use the clean version
 
@@ -82,7 +81,8 @@ def entrypoint(**deps):
 
 
         assert DataArgs.samples_per_class <= len(all_files)
-
+        
+        random.shuffle(all_files)
         all_files = all_files[:DataArgs.samples_per_class]
 
         print("len(all_files)", len(all_files) )

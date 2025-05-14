@@ -15,7 +15,13 @@ class args:
     device = 'cuda'
     batch_size = 128
     model_ema_decay = 0.995
-    ckpt = "/home/exx/mit/diffusion-cassini/results_baseline/steps_00008514.pt"
+    # ckpt = "/home/exx/mit/diffusion-cassini/results_baseline/steps_00008514.pt"
+    # adjust_gamma=False
+    
+    # new
+    ckpt = "/home/exx/Downloads/diffusion-cassini-logs/20250512-021422/steps_00008600.pt"
+    adjust_gamma=True
+    
     test_dataset = "/home/exx/datasets/diffusion-cassini/mnist/brian_v2"
     
     preprocess = transforms.Compose(
@@ -30,7 +36,7 @@ class args:
     model_ema = None
     
 def setup():
-    model = MNISTDiffusion(timesteps=args.timesteps, image_size=28, in_channels=1, base_dim=args.model_base_dim, dim_mults=[2, 4]).to(
+    model = MNISTDiffusion(timesteps=args.timesteps, image_size=28, in_channels=1, base_dim=args.model_base_dim, dim_mults=[2, 4], adjust_gamma=args.adjust_gamma).to(
         args.device
     )
     adjust = 1 * args.batch_size * args.model_ema_steps / args.epochs

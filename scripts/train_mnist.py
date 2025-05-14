@@ -31,12 +31,54 @@ def parse_args():
 
     return args
 
+from datetime import datetime
+
+def make_log_dir(base: str = "logs") -> str:
+    """
+    Create a sub-directory under `base` whose name is the current local
+    timestamp YYYYMMDD-HHMMSS, e.g. logs/20250511-184237.
+
+    Returns
+    -------
+    str
+        The full path of the directory that was (or already) created.
+    """
+    # local time; use .astimezone(timezone.utc) if you prefer UTC
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = os.path.join(base, ts)
+    os.makedirs(log_dir, exist_ok=True)
+    return log_dir
+
+def set_seed(seed):
+    import os
+    import random
+    import numpy as np
+    import torch
+
+    # ------------ Python & NumPy ----------
+    os.environ["PYTHONHASHSEED"] = str(seed)  # (helps with hash-based ops)
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # ------------ PyTorch -----------------
+    torch.manual_seed(seed)  # CPU
+    torch.cuda.manual_seed(seed)  # current GPU
+    torch.cuda.manual_seed_all(seed)  # all GPUs
+
+
 
 def main(args):
+    set_seed(42)
     device="cpu" if args.cpu else "cuda"
+    log_root = make_log_dir("/home/exx/Downloads/diffusion-cassini-logs/")
+    print(f"Logging root is set to {log_root}")
+    
+    DATASET = "/home/exx/datasets/diffusion-cassini/mnist/v2"
+    ADJUST_GAMMA = True
+
     # device="cpu"
-    train_dataloader,test_dataloader=create_dataloaders(dataset_path="/home/exx/datasets/diffusion-cassini/mnist/v2", clean_L=0, batch_size=args.batch_size, test_batch_size=args.n_samples, image_size=28, num_workers=1)
-    model = MNISTDiffusion(timesteps=args.timesteps, image_size=28, in_channels=1, base_dim=args.model_base_dim, dim_mults=[2, 4]).to(
+    train_dataloader,test_dataloader=create_dataloaders(dataset_path=DATASET, clean_L=0, batch_size=args.batch_size, test_batch_size=args.n_samples, image_size=28, num_workers=1)
+    model = MNISTDiffusion(timesteps=args.timesteps, image_size=28, in_channels=1, base_dim=args.model_base_dim, dim_mults=[2, 4], adjust_gamma=ADJUST_GAMMA).to(
         device
     )
     
@@ -93,20 +135,8 @@ def main(args):
         ckpt={"model":model.state_dict(),
                 "model_ema":model_ema.state_dict()}
 
-        os.makedirs("results_baseline",exist_ok=True)
-        # torch.save(ckpt,"results/steps_{:0>8}.pt".format(global_steps))
-
         model_ema.eval()
-        # image, Ls = next(iter(test_dataloader))
-        # image=image.to(device)
-        # Ls = Ls.to(device)
-        # # higher L -> less noised. 
-        # # this says that we only sample more noise level than the image contains
-        # mask = Ls > 0
-        # noise_level_min = torch.zeros_like(Ls)
-        # noise_level_min[mask] = (model.timesteps / Ls[mask]).long()
-        # samples = model_ema.module.sampling_starting_from_noise_level(test_images, noise_level_min=test_noise_level_min, clipped_reverse_diffusion=not args.no_clip, device=device)
-        
+
         if (i+1) % eval_every == 0:
             samples = model_ema.module.sampling_Ls(
                 test_images.clone(), 
@@ -114,8 +144,8 @@ def main(args):
                 clipped_reverse_diffusion=not args.no_clip,
                 device=device,
             )
-            save_image(samples,"results_baseline/steps_{:0>8}.png".format(global_steps),nrow=int(math.sqrt(args.n_samples)))
-        torch.save(ckpt,"results_baseline/steps_{:0>8}.pt".format(global_steps))
+            save_image(samples,log_root + "/steps_{:0>8}.png".format(global_steps),nrow=int(math.sqrt(args.n_samples)))
+    torch.save(ckpt, log_root + "/steps_{:0>8}.pt".format(global_steps))
                 
 
 if __name__=="__main__":

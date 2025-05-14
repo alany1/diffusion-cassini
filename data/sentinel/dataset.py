@@ -73,7 +73,21 @@ def create_dataloaders(*, batch_size, test_batch_size, dataset_path, clean_L, im
     return train_loader, val_loader
 
 def create_eval_dataloader(*, test_batch_size, dataset_path, clean_L, image_size=28, num_workers=4):
-    pass
+    preprocess = transforms.Compose(
+        [
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),  # scales image to [0,1]
+            transforms.Lambda(lambda x: torch.log1p(x)),  # apply log(1+x) transform
+            transforms.Normalize([0.3863], [0.1982]),  # suggested normalization after log1p
+        ]
+    )
+
+    # Set the root folder based on your dataset structure:
+    full_dataset = SyntheticSentinelDataset(root=dataset_path, clean_L=clean_L, transform=preprocess)
+
+    val_loader = DataLoader(full_dataset, batch_size=test_batch_size, shuffle=False, num_workers=num_workers)
+
+    return val_loader
 
 # Example usage:
 if __name__ == "__main__":
